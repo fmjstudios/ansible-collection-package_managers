@@ -1,0 +1,82 @@
+---
+- name: install | Check wether or not PHP is installed on the system
+  ansible.builtin.shell: |
+    php --version
+  register: _php_version_check_
+  changed_when: false
+  failed_when: _php_version_check_.rc != 0
+
+- name: install | Fail the role if PHP is found not to be installed on the system
+  ansible.builtin.fail:
+    msg: "PHP is not installed, as 'php --version' gave output: {{ _php_version_check_.stdout_lines }}"
+  when:
+    - "'Zend Engine' not in _php_version_check_.stdout"
+    - "'The PHP Group' not in _php_version_check_.stdout"
+
+- name: install | Check whether or not Composer itself may already be installed
+  ansible.builtin.stat:
+    path: "{{ composer_install_file }}"
+  register: _composer_existence_check_
+  changed_when: false
+  failed_when: false
+
+- name: install | Update existing Composer installation if it exists
+  become: true
+  become_user: "{{ composer_system_user }}"
+  ansible.builtin.shell: |
+    php {{ composer_install_file }} self-update {{ composer_version_channel }}
+  register: _composer_self_update_
+  changed_when:
+    - "'Upgrading to version' in _composer_self_update_"
+    - "'Use composer self-update --rollback to return' in _composer_self_update_"
+  failed_when: _composer_self_update_.rc != 0
+  when:
+    - _composer_existence_check_.stat.exists
+    - composer_version_auto_upgrade
+
+- name: install | Download and verify the Composer PHP installer script
+  when: not _composer_existence_check_.stat.exists
+  block:
+    - name: install | Download the PHP installer
+      ansible.builtin.shell: |
+        php -r "copy('{{ __composer_url }}', '{{ __composer_tmp_filename }}');"
+      args:
+        chdir: "{{ __composer_tmp_path }}"
+        creates: "{{ __composer_tmp_path }}/{{ __composer_tmp_filename }}"
+      register: _composer_installer_download_
+      failed_when: _composer_installer_download_.rc != 0
+
+    - name: install | Verify the PHP installer hash
+      ansible.builtin.shell: |
+        php -r "if (hash_file('{{ __composer_installer_hash_method }}', \
+        '{{ __composer_tmp_filename }}') === '{{ __composer_installer_hash }}') \
+        { echo 'Installer verified'; } else \
+        { echo 'Installer corrupt'; unlink('{{ __composer_tmp_filename }}'); } \
+        echo PHP_EOL;"
+      args:
+        chdir: "{{ __composer_tmp_path }}"
+      changed_when: false
+      register: _composer_installer_hash_check_
+      failed_when: _composer_installer_hash_check_.rc != 0
+
+- name: install | Run the Composer installer
+  become: true
+  become_user: "{{ composer_system_user }}"
+  ansible.builtin.shell: |
+    php {{ __composer_tmp_filename }} \
+    --install-dir {{ composer_install_dir }} \
+    --version {{ composer_version }} \
+    --filename {{ composer_install_filename }} \
+    {{ composer_version_channel }}
+  args:
+    chdir: "{{ __composer_tmp_path }}"
+    creates: "{{ composer_install_file }}"
+  register: _composer_install_
+  failed_when: _composer_install_.rc != 0
+
+- name: install | Remove the old Composer installer and temporary path
+  ansible.builtin.file:
+    path: "{{ __composer_tmp_path }}"
+    state: absent
+    recurse: true
+  when: _composer_install_.rc != 0

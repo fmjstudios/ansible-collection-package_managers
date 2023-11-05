@@ -1,0 +1,25 @@
+---
+__composer_tmp_path: /tmp/composer
+__composer_tmp_filename: "composer-setup.php"
+
+__composer_url: "https://getcomposer.org/installer"
+
+__composer_installer_hash_method: sha384
+__composer_installer_hash: "e21205b207c3ff031906575712\
+  edab6f13eb0b361f2085f1f1237b7126d785e826a450292b6cfd\
+  1d64d92e6563bbde02"
+
+__composer_custom_auth_template: |
+  {
+    "bearer": {
+        "{{ composer_custom_repo_url | default('example.org') }}": \
+        "{{ composer_custom_repo_token | default('secret') }}"
+    }
+  }
+
+__composer_github_auth_template: |
+  {
+    "gitlab-oauth": {
+        "github.com": "{{ composer_custom_repo_github_token }}"
+    }
+  }

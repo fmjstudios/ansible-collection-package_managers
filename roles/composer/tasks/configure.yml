@@ -1,0 +1,36 @@
+---
+- name: configure | Configure private PHP Composer repository authentications
+  ansible.builtin.copy:
+    dest: "{{ composer_home_dir }}/auth.json"
+    content: "{{ __composer_custom_auth_template }}"
+    owner: "{{ composer_system_user }}"
+    group: "{{ composer_system_user }}"
+    mode: 0640
+  when:
+    - composer_custom_repo_url
+    - composer_custom_repo_token
+
+- name: configure | Configure private PHP Composer repository authentications including GitHub
+  ansible.builtin.copy:
+    dest: "{{ composer_home_dir }}/auth.json"
+    content: "{{ __composer_custom_auth_template | combine(__composer_github_auth_template) }}"
+    owner: "{{ composer_system_user }}"
+    group: "{{ composer_system_user }}"
+    mode: 0640
+  when:
+    - composer_custom_repo_url
+    - composer_custom_repo_token
+    - composer_custom_repo_github_token
+
+- name: configure | Install global Composer packages
+  become: true
+  become_user: "{{ composer_system_user }}"
+  ansible.builtin.shell: |
+    {{ composer_install_file }} global require \
+    {{ __pkg__.name }}:{{ __pkg__.release | default('@stable') }} \
+    --no-progress --no-interaction
+  args:
+    creates: "{{ composer_home_dir }}/vendor/{{ __pkg__.name }}"
+  loop: "{{ composer_global_packages }}"
+  loop_control:
+    loop_var: __pkg__

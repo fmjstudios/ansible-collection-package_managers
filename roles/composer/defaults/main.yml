@@ -1,0 +1,19 @@
+---
+composer_system_user: root
+composer_home_dir: "/home/{{ composer_system_user }}/.composer"
+
+composer_install_dir: /usr/local/bin
+composer_install_filename: composer
+composer_install_file: "{{ composer_install_dir }}/{{ composer_install_filename }}"
+
+composer_version: 2.5.8
+composer_version_auto_upgrade: false
+composer_version_channel: "--2"
+
+composer_global_packages: []
+# - { name: phpunit/phpunit, release: "4.7.x" }
+
+composer_custom_repo_url: ""
+composer_custom_repo_token: ""
+
+composer_custom_repo_github_token: ""
